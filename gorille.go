@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
     "sync"
+    "time"
 
 	pkg "github.com/DylanMeeus/GoAudio/wave"
 )
@@ -13,6 +14,8 @@ var (
 	output = flag.String("o", "", "output file")
 	amp    = flag.Float64("a", 1.0, "amp mod factor")
 )
+
+const SAMPLES_SIZE int = 100000
 
 func Map[T, U any](ts []T, f func(T) U) []U {
     us := make([]U, len(ts))
@@ -45,18 +48,19 @@ func main() {
 	fmt.Printf("Read %v samples\n", len(wave.Frames))
 
     var wg sync.WaitGroup
-
+    start_t := time.Now()
     res = make([]pkg.Frame, len(wave.Frames))
     var ires int = 0
-    for i := 0; i < len(wave.Frames); i += 9 {
-        var to_compute []pkg.Frame = wave.Frames[i:min(i+9, len(wave.Frames) - 1)]
+    for i := 0; i < len(wave.Frames); i += (SAMPLES_SIZE - 1) {
+        var to_compute []pkg.Frame = wave.Frames[i:min(i+(SAMPLES_SIZE), len(wave.Frames) - 1)]
         wg.Add(1)
         go changeAmplitude(i, to_compute, scale, &wg)
-        ires += min(9, len(wave.Frames)-i)
+        ires += min(SAMPLES_SIZE - 1, len(wave.Frames)-i)
     }
 
     wg.Wait()
-    fmt.Println("Finished, computed", ires, "samples")
+    end_t := time.Now()
+    fmt.Println("Finished, computed", ires, "samples in", end_t.Sub(start_t))
 
 	if err := pkg.WriteFrames(res, wave.WaveFmt, outfile); err != nil {
     	panic(err)
