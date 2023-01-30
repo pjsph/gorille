@@ -60,11 +60,11 @@ func main() {
     start_t := time.Now()
     res = make([]pkg.Frame, len(wave.Frames))
     var ires, count int = 0, 0
-    for i := 0; i < len(wave.Frames); i += (SAMPLES_SIZE - 1) {
-        var to_compute []pkg.Frame = wave.Frames[i:min(i+(SAMPLES_SIZE), len(wave.Frames) - 1)]
+    for i := 0; i < len(wave.Frames); i += (SAMPLES_SIZE) {
+        var to_compute []pkg.Frame = wave.Frames[i:min(i+(SAMPLES_SIZE), len(wave.Frames))]
         wg.Add(1)
         go distort(i, to_compute, 0.2, &wg)
-        ires += min(SAMPLES_SIZE - 1, len(wave.Frames)-i)
+        ires += min(SAMPLES_SIZE, len(wave.Frames)-i)
         count++
     }
 
