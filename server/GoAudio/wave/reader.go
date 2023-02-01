@@ -61,13 +61,21 @@ func ReadWaveFromReader(reader io.Reader) (Wave, error) {
 		return Wave{}, err
 	}
 
+	start_t:=time.Now()
 	data = deleteJunk(data)
+	fmt.Println("==== Finished delete junk in", time.Now().Sub(start_t))
 
+	start_t=time.Now()
 	hdr := readHeader(data)
+	fmt.Println("==== Finished read header in", time.Now().Sub(start_t))
 
+	start_t=time.Now()
 	wfmt := readFmt(data)
+	fmt.Println("==== Finished read format in", time.Now().Sub(start_t))
 
+	start_t=time.Now()
 	wavdata := readData(data, wfmt)
+	fmt.Println("==== Finished read data in", time.Now().Sub(start_t))
 
 	frames := parseRawData(wfmt, wavdata.RawData)
 	wavdata.Frames = frames
