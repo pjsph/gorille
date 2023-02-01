@@ -11,4 +11,4 @@ Utilisation du projet:
 -entrer le nom du fichier audio à modifier
 -et voilà ! le fichier de sortie a le même nom que celui d'entrée avec _out en plus
 
-La modification du fichier est parallélisée ainsi qu'une partie du parsing du fichier audio. 
+La modification du fichier est parallélisée ainsi qu'une partie du parsing du fichier audio (la fonction parseRawData).
