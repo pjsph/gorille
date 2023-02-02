@@ -61,23 +61,25 @@ func ReadWaveFromReader(reader io.Reader) (Wave, error) {
 		return Wave{}, err
 	}
 
-	start_t:=time.Now()
+    start_t := time.Now()
 	data = deleteJunk(data)
-	fmt.Println("==== Finished delete junk in", time.Now().Sub(start_t))
+    fmt.Println("= Deleted junk in", time.Now().Sub(start_t))
 
-	start_t=time.Now()
+    start_t = time.Now()
 	hdr := readHeader(data)
-	fmt.Println("==== Finished read header in", time.Now().Sub(start_t))
+    fmt.Println("= Read header in", time.Now().Sub(start_t))
 
-	start_t=time.Now()
+    start_t = time.Now()
 	wfmt := readFmt(data)
-	fmt.Println("==== Finished read format in", time.Now().Sub(start_t))
+    fmt.Println("= Read format in", time.Now().Sub(start_t))
 
-	start_t=time.Now()
+    start_t = time.Now()
 	wavdata := readData(data, wfmt)
-	fmt.Println("==== Finished read data in", time.Now().Sub(start_t))
+    fmt.Println("= Read data in", time.Now().Sub(start_t))
 
+    start_t = time.Now()
 	frames := parseRawData(wfmt, wavdata.RawData)
+    fmt.Println("= Parsed data in", time.Now().Sub(start_t))
 	wavdata.Frames = frames
 
 	return Wave{
@@ -200,7 +202,6 @@ func parseRawData(wfmt WaveFmt, rawdata []byte) []Frame {
     // read the chunks
 
     var wg sync.WaitGroup
-    start_t := time.Now()
     nbOfFramesPerRoutine := len(frames) / 17
     for i := 0; i < len(frames); i += nbOfFramesPerRoutine {
         wg.Add(1)
@@ -208,7 +209,6 @@ func parseRawData(wfmt WaveFmt, rawdata []byte) []Frame {
         go paral(i, frames, bytesSampleSize, wfmt, rawFramesPerRoutine, &wg)
     }
     wg.Wait()
-    fmt.Println("==== Finished in", time.Now().Sub(start_t))
     return frames
 }
 
@@ -231,15 +231,27 @@ func scaleFrame(unscaled, bits int) Frame {
 func deleteJunk(b []byte) []byte {
 	var junkStart, junkEnd int
 
-	for i := 0; i < len(b)-4; i++ {
-		if strings.ToLower(string(b[i:i+4])) == "junk" {
-			junkStart = i
-		}
+    subSize := len(b) / 17
 
-		if strings.ToLower(string(b[i:i+3])) == "fmt" {
-			junkEnd = i
-		}
+    var wg sync.WaitGroup
+	for i := 0; i < len(b); i += subSize {
+        subB := b[i:min(i+subSize, len(b))]
+        wg.Add(1)
+        go func() {
+            for j := 0; j < len(subB); j++ {
+                if strings.ToLower(string(subB[j:j+4])) == "junk" {
+                    junkStart = j
+                }
+
+                if strings.ToLower(string(subB[j:j+3])) == "fmt" {
+                    junkEnd = j
+                }
+            }
+            wg.Done()
+       }()
 	}
+
+    wg.Wait()
 
 	if junkStart != 0 {
 		cpy := make([]byte, len(b[0:junkStart]))

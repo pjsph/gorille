@@ -5,6 +5,9 @@ import (
 	"io"
 	"math"
 	"os"
+    "sync"
+    "time"
+    "fmt"
 )
 
 // Consts that appear in the .WAVE file format
@@ -44,9 +47,15 @@ func WriteWaveFile(samples []Frame, wfmt WaveFmt, file string) error {
 }
 
 func WriteWaveToWriter(samples []Frame, wfmt WaveFmt, writer io.Writer) error {
+    start_t := time.Now()
 	wfb := fmtToBytes(wfmt)
+    fmt.Println("= Wrote format in", time.Now().Sub(start_t))
+    start_t = time.Now()
 	data, databits := framesToData(samples, wfmt)
+    fmt.Println("= Unparsed data in", time.Now().Sub(start_t))
+    start_t = time.Now()
 	hdr := createHeader(data)
+    fmt.Println("= Wrote header in", time.Now().Sub(start_t))
 
 	_, err := writer.Write(hdr)
 	if err != nil {
@@ -117,13 +126,35 @@ func floatToBytes(f float64, nBytes int) []byte {
 
 // Turn the samples into raw data...
 func samplesToRawData(samples []Frame, props WaveFmt) []byte {
-	raw := []byte{}
-	for _, s := range samples {
+	raw := make([]byte, len(samples) * props.BitsPerSample / 8)
+
+    subSize := len(samples) / 17
+
+    var wg sync.WaitGroup
+	for i := 0; i < len(samples); i += subSize {
 		// the samples are scaled - rescale them?
-		rescaled := rescaleFrame(s, props.BitsPerSample)
-		bits := intsToBytesFm[props.BitsPerSample](rescaled)
-		raw = append(raw, bits...)
+        subSamples := samples[i:min(i+subSize, len(samples))]
+        wg.Add(1)
+        go func(i int, subSamples []Frame) {
+            for j, s := range subSamples {
+                rescaled := rescaleFrame(s, props.BitsPerSample)
+                bits := intsToBytesFm[props.BitsPerSample](rescaled)
+                for k := range bits {
+                    raw[(i + j) * props.BitsPerSample / 8 + k] = bits[k]
+                }
+            }
+            wg.Done()
+        }(i, subSamples)
 	}
+//    for j, s := range samples {
+//        rescaled := rescaleFrame(s, props.BitsPerSample)
+//        bits := intsToBytesFm[props.BitsPerSample](rescaled)
+//        for k := 0; k < len(bits); k++ {
+//            raw[j * 2 + k] = bits[k]
+//        }
+//    }
+
+    wg.Wait()
 	return raw
 }
 
